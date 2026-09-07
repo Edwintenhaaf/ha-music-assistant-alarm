@@ -348,7 +348,6 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return
         target = int(self.settings.get(SET_LIGHT_BRIGHTNESS, 80))
         minutes = int(self.settings.get(SET_LIGHT_MINUTES, 0))
-        self._lights_are_ours = True
         if minutes <= 0:
             await self._async_set_lights(target, None)
             return
@@ -384,6 +383,7 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.hass.services.async_call(
                 LIGHT_DOMAIN, SERVICE_TURN_ON, data, blocking=True
             )
+            self._lights_are_ours = True
         except HomeAssistantError as err:
             _LOGGER.warning("%s: could not set the wake-up light: %s", self.name, err)
 
