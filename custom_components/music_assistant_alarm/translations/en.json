@@ -1,0 +1,120 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add an alarm",
+        "description": "Every alarm has its own player, its own wake-up sound and its own schedule. Add one per person or per room.",
+        "data": {
+          "name": "Name",
+          "player": "Music Assistant player",
+          "lights": "Wake-up light"
+        },
+        "data_description": {
+          "name": "Shown on the device and in front of every entity, for example \"Bedroom\".",
+          "player": "The player the wake-up sound comes out of.",
+          "lights": "Optional. These lights fade in before the alarm goes off."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Alarm settings",
+        "data": {
+          "player": "Music Assistant player",
+          "lights": "Wake-up light",
+          "notify_service": "Notification service",
+          "squeezebox_host": "Squeezebox address",
+          "squeezebox_port": "Squeezebox port"
+        },
+        "data_description": {
+          "notify_service": "Optional, for example notify.mobile_app_phone. Gets a message when the alarm could not go off.",
+          "squeezebox_host": "Optional. IP address of a Squeezebox running the HAWekker applet, which then shows the bell and the wake-up window itself.",
+          "squeezebox_port": "The udp port the applet listens on. Leave at 9997 unless you changed it."
+        }
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "enabled": { "name": "Alarm" },
+      "light_enabled": { "name": "Wake-up light" },
+      "light_off_at_end": { "name": "Light off afterwards" },
+      "day_mon": { "name": "Monday" },
+      "day_tue": { "name": "Tuesday" },
+      "day_wed": { "name": "Wednesday" },
+      "day_thu": { "name": "Thursday" },
+      "day_fri": { "name": "Friday" },
+      "day_sat": { "name": "Saturday" },
+      "day_sun": { "name": "Sunday" }
+    },
+    "time": {
+      "alarm_time": { "name": "Wake-up time" }
+    },
+    "number": {
+      "volume": { "name": "Volume" },
+      "fade_minutes": { "name": "Fade-in" },
+      "stop_after_minutes": { "name": "Stop after" },
+      "snooze_minutes": { "name": "Snooze time" },
+      "light_minutes": { "name": "Light head start" },
+      "light_brightness": { "name": "Light brightness" }
+    },
+    "select": {
+      "media": { "name": "Wake-up sound" }
+    },
+    "sensor": {
+      "next_alarm": { "name": "Next alarm" },
+      "status": {
+        "name": "Status",
+        "state": {
+          "off": "Off",
+          "armed": "Armed",
+          "light": "Wake-up light",
+          "ringing": "Ringing",
+          "snoozed": "Snoozed"
+        }
+      }
+    },
+    "button": {
+      "test": { "name": "Try now" },
+      "stop": { "name": "Stop" },
+      "snooze": { "name": "Snooze" }
+    }
+  },
+  "services": {
+    "trigger": {
+      "name": "Start the wake-up",
+      "description": "Runs the wake-up right now, as if the alarm had gone off.",
+      "fields": {
+        "config_entry_id": { "name": "Alarm", "description": "The alarm to start." }
+      }
+    },
+    "stop": {
+      "name": "Stop",
+      "description": "Stops a running wake-up and arms the alarm again.",
+      "fields": {
+        "config_entry_id": { "name": "Alarm", "description": "The alarm to stop." }
+      }
+    },
+    "snooze": {
+      "name": "Snooze",
+      "description": "Silences the alarm and brings it back after the snooze time.",
+      "fields": {
+        "config_entry_id": { "name": "Alarm", "description": "The alarm to snooze." }
+      }
+    },
+    "refresh_media": {
+      "name": "Refresh the library",
+      "description": "Reads the radio stations and playlists from Music Assistant again.",
+      "fields": {
+        "config_entry_id": { "name": "Alarm", "description": "The alarm to refresh." }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_entry": {
+      "message": "Unknown alarm: {entry_id}."
+    }
+  }
+}

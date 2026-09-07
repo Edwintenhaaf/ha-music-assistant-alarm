@@ -1,0 +1,120 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Wekker toevoegen",
+        "description": "Elke wekker heeft zijn eigen speler, eigen wekgeluid en eigen dagen. Voeg er één toe per persoon of per kamer.",
+        "data": {
+          "name": "Naam",
+          "player": "Music Assistant-speler",
+          "lights": "Wekkerlicht"
+        },
+        "data_description": {
+          "name": "Staat op het apparaat en vóór elke entiteit, bijvoorbeeld \"Slaapkamer\".",
+          "player": "De speler waar het wekgeluid uit komt.",
+          "lights": "Optioneel. Deze lampen komen vóór de wektijd langzaam op."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Instellingen van de wekker",
+        "data": {
+          "player": "Music Assistant-speler",
+          "lights": "Wekkerlicht",
+          "notify_service": "Meldingsdienst",
+          "squeezebox_host": "Adres van de Squeezebox",
+          "squeezebox_port": "Poort van de Squeezebox"
+        },
+        "data_description": {
+          "notify_service": "Optioneel, bijvoorbeeld notify.mobile_app_telefoon. Krijgt bericht als de wekker niet kon afgaan.",
+          "squeezebox_host": "Optioneel. IP-adres van een Squeezebox met het HAWekker-applet, die dan zelf het belletje en het wekvenster toont.",
+          "squeezebox_port": "De udp-poort waar het applet op luistert. Laat op 9997 staan tenzij je die hebt gewijzigd."
+        }
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "enabled": { "name": "Wekker" },
+      "light_enabled": { "name": "Wekkerlicht" },
+      "light_off_at_end": { "name": "Licht uit na afloop" },
+      "day_mon": { "name": "Maandag" },
+      "day_tue": { "name": "Dinsdag" },
+      "day_wed": { "name": "Woensdag" },
+      "day_thu": { "name": "Donderdag" },
+      "day_fri": { "name": "Vrijdag" },
+      "day_sat": { "name": "Zaterdag" },
+      "day_sun": { "name": "Zondag" }
+    },
+    "time": {
+      "alarm_time": { "name": "Wektijd" }
+    },
+    "number": {
+      "volume": { "name": "Eindvolume" },
+      "fade_minutes": { "name": "Opbouwtijd" },
+      "stop_after_minutes": { "name": "Stoppen na" },
+      "snooze_minutes": { "name": "Snoozetijd" },
+      "light_minutes": { "name": "Licht start voor" },
+      "light_brightness": { "name": "Lichtsterkte" }
+    },
+    "select": {
+      "media": { "name": "Wekgeluid" }
+    },
+    "sensor": {
+      "next_alarm": { "name": "Volgende wekker" },
+      "status": {
+        "name": "Status",
+        "state": {
+          "off": "Uit",
+          "armed": "Staat aan",
+          "light": "Wekkerlicht",
+          "ringing": "Gaat af",
+          "snoozed": "Snooze"
+        }
+      }
+    },
+    "button": {
+      "test": { "name": "Nu uitproberen" },
+      "stop": { "name": "Stoppen" },
+      "snooze": { "name": "Snoozen" }
+    }
+  },
+  "services": {
+    "trigger": {
+      "name": "Wekken starten",
+      "description": "Start de wekroutine nu, alsof de wekker afging.",
+      "fields": {
+        "config_entry_id": { "name": "Wekker", "description": "De wekker die moet starten." }
+      }
+    },
+    "stop": {
+      "name": "Stoppen",
+      "description": "Breekt een lopende wekroutine af en zet de wekker weer klaar.",
+      "fields": {
+        "config_entry_id": { "name": "Wekker", "description": "De wekker die moet stoppen." }
+      }
+    },
+    "snooze": {
+      "name": "Snoozen",
+      "description": "Legt de wekker stil en laat hem na de snoozetijd terugkomen.",
+      "fields": {
+        "config_entry_id": { "name": "Wekker", "description": "De wekker die moet snoozen." }
+      }
+    },
+    "refresh_media": {
+      "name": "Bibliotheek verversen",
+      "description": "Leest de radiozenders en playlists opnieuw uit Music Assistant.",
+      "fields": {
+        "config_entry_id": { "name": "Wekker", "description": "De wekker die moet verversen." }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_entry": {
+      "message": "Onbekende wekker: {entry_id}."
+    }
+  }
+}

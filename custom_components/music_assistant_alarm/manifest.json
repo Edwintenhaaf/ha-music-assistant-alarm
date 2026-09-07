@@ -1,0 +1,13 @@
+{
+  "domain": "music_assistant_alarm",
+  "name": "Music Assistant Alarm Clock",
+  "codeowners": ["@Edwintenhaaf"],
+  "config_flow": true,
+  "documentation": "https://github.com/Edwintenhaaf/ha-music-assistant-alarm",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Edwintenhaaf/ha-music-assistant-alarm/issues",
+  "after_dependencies": ["music_assistant"],
+  "requirements": [],
+  "version": "0.1.0"
+}

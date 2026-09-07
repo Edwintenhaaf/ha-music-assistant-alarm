@@ -1,0 +1,3 @@
+HAWEKKER
+	NL	Wekker via Home Assistant
+	EN	Alarm from Home Assistant
