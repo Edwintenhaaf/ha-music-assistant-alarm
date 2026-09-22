@@ -23,13 +23,22 @@ op zijn eigen wektoon.
 Het belletje in de klok-screensaver hangt niet aan de iconbar maar aan
 player:getAlarmState(), dus die zetten we er zelf bij.
 
+In hetzelfde pakketje staat "now=<epoch>": de tijd van Home Assistant. Een
+Squeezebox heeft geen ntp-client; hij zet zijn klok op het epoch dat hij via
+zijn abonnement op /slim/datestatus binnenkrijgt. Music Assistant beantwoordt
+dat abonnement niet - aioslimproto kent alleen playerstatus, serverstatus en
+menustatus - dus loopt de klok ongemerkt weg. Wijkt hij meer dan een paar
+seconden af, dan zetten we hem hier gelijk, langs hetzelfde pad als SqueezeOS
+zelf: squeezeos_bsp.swclockSetEpoch() gevolgd door sys2hwclock().
+
 =cut
 --]]
 
 
-local tonumber, tostring = tonumber, tostring
+local tonumber, tostring, pcall, require = tonumber, tostring, pcall, require
 
 local os                 = require("os")
+local math               = require("math")
 local string             = require("string")
 local oo                 = require("loop.simple")
 
@@ -40,6 +49,7 @@ local SocketUdp          = require("jive.net.SocketUdp")
 local Player             = require("jive.slim.Player")
 
 local jnt                = jnt
+local iconbar            = iconbar
 local appletManager      = appletManager
 
 
@@ -56,6 +66,12 @@ local HA_IP = "192.168.2.100"
 -- hoe vaak we controleren of de speler nog weet dat er een wekker staat
 local TICK = 60000
 
+-- vanaf hoeveel seconden verschil we de klok gelijkzetten
+local DRIFT = 5
+
+-- zo kort voor de wektijd laten we de klok met rust
+local WEKMARGE = 120
+
 
 function init(self)
 	-- laatste wektijd die Home Assistant doorgaf (epoch, 0 = geen wekker)
@@ -65,6 +81,8 @@ function init(self)
 	-- pas na het eerste bericht van Home Assistant weten we iets; daarvoor
 	-- laten we de wektijd staan die AlarmSnooze zelf had bewaard
 	self.gehoord = false
+	-- tijd van Home Assistant uit het laatste pakketje (epoch, nil = geen)
+	self.servertijd = nil
 
 	self.socket = SocketUdp(jnt,
 		function(chunk, err)
@@ -115,14 +133,69 @@ function _sink(self, chunk, err)
 	self.wanted = epoch
 	self.gehoord = true
 
+	-- de tijd in hetzelfde pakketje is optioneel: oudere versies van de
+	-- integratie sturen alleen de wektijd
+	self.servertijd = tonumber(string.match(chunk.data, "now%s*=%s*(%d+)"))
+
 	-- niet vanuit de netwerktaak in de speler roeren, dat doet de timer zo
 	local hand = Timer(10,
 		function()
+			-- eerst de klok, dan pas de wektimers die eraan hangen
+			self:_klok()
 			self:_apply()
 		end,
 		true	-- eenmalig
 	)
 	hand:start()
+end
+
+
+-- _klok
+-- zet de klok van het toestel gelijk met die van Home Assistant. SqueezeOS
+-- doet dit normaal met het epoch uit /slim/datestatus; Music Assistant stuurt
+-- dat nooit, dus zonder dit loopt de klok weg.
+function _klok(self)
+	local server = self.servertijd
+	self.servertijd = nil
+
+	if not server then
+		return
+	end
+
+	local verschil = server - os.time()
+	if math.abs(verschil) < DRIFT then
+		return
+	end
+
+	-- een wekker die zo afgaat niet onder de klok vandaan trekken: de
+	-- RTC-timer van de MCU staat op de oude tijd gezet
+	local wekker = self.applied or self.wanted
+	if wekker and wekker > os.time() and wekker - os.time() <= WEKMARGE then
+		log:info("klok loopt ", verschil, " s mis, maar de wekker gaat zo af - later")
+		return
+	end
+
+	local goed, squeezeos = pcall(require, "squeezeos_bsp")
+	if goed and squeezeos.swclockSetEpoch then
+		-- hetzelfde pad als SqueezeboxBabyApplet:setDate()
+		squeezeos.swclockSetEpoch(server)
+
+		local gelukt, err = squeezeos.sys2hwclock()
+		if not gelukt then
+			log:warn("sys2hwclock() mislukte: ", tostring(err))
+		end
+	else
+		-- oudere firmware zonder die aanroepen: dan maar via de shell
+		log:warn("squeezeos_bsp kent swclockSetEpoch niet, val terug op date")
+		os.execute("/bin/date -s " .. os.date("%Y.%m.%d-%H:%M:%S", server))
+		os.execute("/sbin/hwclock -w -u")
+	end
+
+	log:info("klok ", verschil, " s bijgezet, staat nu op ", os.date("%c", server))
+
+	if iconbar then
+		iconbar:update()
+	end
 end
 
 

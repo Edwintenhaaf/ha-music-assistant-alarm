@@ -80,7 +80,8 @@ Per alarm, under **Configure**:
   wake-up fails.
 - **Squeezebox address / port** — optional; see
   [`extras/squeezebox_hawekker`](extras/squeezebox_hawekker) for a classic
-  Squeezebox that should show its own bell and wake-up window.
+  Squeezebox that should show its own bell and wake-up window, and keep its
+  clock on time.
 
 ## Services
 

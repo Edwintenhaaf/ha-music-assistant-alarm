@@ -642,11 +642,16 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # ------------------------------------------------------------------
 
     async def _async_push_next_alarm(self) -> None:
-        """Tell an attached Squeezebox when the next alarm is due.
+        """Tell an attached Squeezebox when the next alarm is due, and what time it is.
 
         Music Assistant never fills the ``alarm_next`` field of the slimproto
         player status, so a Squeezebox running the HAWekker applet gets the
         epoch over udp instead. 0 means: no alarm set.
+
+        The same packet carries the current time. A Squeezebox has no ntp
+        client: it sets its clock from the ``/slim/datestatus`` subscription,
+        which Music Assistant does not answer, so without this its clock just
+        drifts away. The applet only touches the clock when it is actually off.
         """
         host = self.entry.options.get(CONF_SQUEEZEBOX_HOST)
         if not host:
@@ -655,14 +660,15 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         target = self.next_alarm(grace_minutes=NEXT_ALARM_GRACE_MINUTES)
         epoch = int(target.timestamp()) if target else 0
         self._last_pushed_epoch = epoch
-        await self.hass.async_add_executor_job(self._send_udp, host, port, epoch)
+        now = int(dt_util.utcnow().timestamp())
+        await self.hass.async_add_executor_job(self._send_udp, host, port, epoch, now)
 
     @staticmethod
-    def _send_udp(host: str, port: int, epoch: int) -> None:
-        """Send the next alarm time to the Squeezebox applet."""
+    def _send_udp(host: str, port: int, epoch: int, now: int) -> None:
+        """Send the next alarm time and the current time to the Squeezebox applet."""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                 sock.settimeout(2)
-                sock.sendto(f"next={epoch}".encode(), (host, port))
+                sock.sendto(f"next={epoch} now={now}".encode(), (host, port))
         except OSError as err:
             _LOGGER.debug("Could not reach the Squeezebox applet on %s: %s", host, err)

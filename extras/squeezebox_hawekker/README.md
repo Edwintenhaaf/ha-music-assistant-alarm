@@ -30,6 +30,21 @@ every five minutes after that, so the device catches up on its own after a
 reboot. Fill in the address of the Squeezebox in the options of the alarm to
 switch it on.
 
+## It also sets the clock
+
+The same packet carries `now=<epoch>`, the current time. A Squeezebox has no
+ntp client: it gets its time from the server, by subscribing to
+`/slim/datestatus/<playerid>` and feeding the `date_epoch` it receives into
+`swclockSetEpoch()`. Music Assistant never answers that subscription -
+`aioslimproto` only knows `playerstatus`, `serverstatus` and `menustatus` - so
+the clock of a Squeezebox on Music Assistant drifts away unnoticed, and after a
+power cut it is simply wrong.
+
+The applet sets the clock along the same path SqueezeOS uses itself, but only
+when it is more than five seconds off, and never in the last two minutes before
+the alarm is due: the wake-up timer of the MCU is set in the old time, and
+moving the clock underneath it would cost the wake-up window.
+
 ## Install
 
 Copy the applet onto the device and restart the user interface:
