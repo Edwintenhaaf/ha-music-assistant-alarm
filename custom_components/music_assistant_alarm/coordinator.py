@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, time as dt_time, timedelta
+import contextlib
 import logging
 import socket
+from datetime import datetime, timedelta
+from datetime import time as dt_time
 from typing import Any
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS_PCT,
     ATTR_TRANSITION,
-    DOMAIN as LIGHT_DOMAIN,
     LightEntityFeature,
+)
+from homeassistant.components.light import (
+    DOMAIN as LIGHT_DOMAIN,
 )
 from homeassistant.components.media_player import (
     ATTR_MEDIA_VOLUME_LEVEL,
+)
+from homeassistant.components.media_player import (
     DOMAIN as MEDIA_PLAYER_DOMAIN,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -324,10 +330,8 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if task is None or task.done():
                 continue
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
     # ------------------------------------------------------------------
     # the wake-up itself
@@ -457,7 +461,7 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self._async_end_run(turn_off=self._is_playing())
         except asyncio.CancelledError:
             raise
-        except Exception:  # noqa: BLE001 - a wake-up must never die silently
+        except Exception:
             _LOGGER.exception("%s: the wake-up failed", self.name)
             await self._async_end_run(turn_off=False)
 

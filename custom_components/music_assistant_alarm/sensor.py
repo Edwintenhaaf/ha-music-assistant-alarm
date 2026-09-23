@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import ClassVar
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant
@@ -27,7 +28,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up the sensors of one alarm."""
     coordinator = entry.runtime_data
-    async_add_entities([AlarmNextSensor(coordinator, "next_alarm"), AlarmStatusSensor(coordinator, "status")])
+    async_add_entities(
+        [
+            AlarmNextSensor(coordinator, "next_alarm"),
+            AlarmStatusSensor(coordinator, "status"),
+        ]
+    )
 
 
 class AlarmNextSensor(AlarmEntity, SensorEntity):
@@ -51,7 +57,13 @@ class AlarmStatusSensor(AlarmEntity, SensorEntity):
     """What the alarm is doing."""
 
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = [STATUS_OFF, STATUS_ARMED, STATUS_LIGHT, STATUS_RINGING, STATUS_SNOOZED]
+    _attr_options: ClassVar[list[str]] = [
+        STATUS_OFF,
+        STATUS_ARMED,
+        STATUS_LIGHT,
+        STATUS_RINGING,
+        STATUS_SNOOZED,
+    ]
     _attr_icon = "mdi:alarm-note"
 
     @property
