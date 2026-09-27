@@ -31,6 +31,8 @@ from homeassistant.const import (
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
     SERVICE_VOLUME_SET,
+    STATE_OFF,
+    STATE_PAUSED,
     STATE_PLAYING,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
@@ -92,6 +94,17 @@ STORAGE_VERSION = 1
 # that the wake-up failed. Radio streams need a moment to connect.
 PLAY_TIMEOUT_SECONDS = 20
 
+# A player that stops on its own this soon after the start has not been
+# dismissed: the stream fell over. A Squeezebox that wakes from standby at the
+# very moment its own RTC alarm fires drops the first stream, for example.
+# Within this window we start the music again, at most PLAY_RETRIES times.
+START_GRACE_SECONDS = 90
+PLAY_RETRIES = 3
+
+
+class _WakeUpEnded(Exception):
+    """The wake-up has already been wound down, e.g. after a failure report."""
+
 
 class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Holds the settings of one alarm, schedules it and runs the wake-up."""
@@ -119,6 +132,7 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._light_task: asyncio.Task | None = None
         self._snooze_until: datetime | None = None
         self._lights_are_ours = False
+        self._restarts = 0
         self._last_pushed_epoch: int | None = None
 
     # ------------------------------------------------------------------
@@ -433,20 +447,17 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             start = max(1, round(target / 5)) if fade > 0 else target
 
             await self._async_set_volume(start)
-            if not await self._async_play_media():
+            self._restarts = 0
+            if not await self._async_start_playback():
                 return
-            if not await self._async_wait_for_playback():
-                await self._async_report_failure(
-                    f"{self.player} did not start playing within "
-                    f"{PLAY_TIMEOUT_SECONDS} seconds"
-                )
-                return
+            started = dt_util.utcnow()
 
             if fade > 0:
                 step_seconds = fade * 60 / VOLUME_STEPS
                 for step in range(1, VOLUME_STEPS + 1):
-                    await asyncio.sleep(step_seconds)
-                    if not self._is_playing():
+                    if not await self._async_sleep_watching(
+                        step_seconds, started
+                    ) or not await self._async_still_playing(started):
                         # Paused on the device itself: that is a dismissal.
                         await self._async_end_run(turn_off=False)
                         return
@@ -456,11 +467,16 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             stop_after = float(self.settings.get(SET_STOP_AFTER_MINUTES, 30))
             remaining = max(0.0, stop_after - fade)
-            if remaining:
-                await asyncio.sleep(remaining * 60)
+            if remaining and not await self._async_sleep_watching(
+                remaining * 60, started
+            ):
+                await self._async_end_run(turn_off=False)
+                return
             await self._async_end_run(turn_off=self._is_playing())
         except asyncio.CancelledError:
             raise
+        except _WakeUpEnded:
+            return
         except Exception:
             _LOGGER.exception("%s: the wake-up failed", self.name)
             await self._async_end_run(turn_off=False)
@@ -476,6 +492,68 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._reschedule()
         self._refresh_entities()
         await self._async_push_next_alarm()
+
+    async def _async_start_playback(self) -> bool:
+        """Switch the player on, start the music and wait until it plays.
+
+        Returns False when that failed; the failure has then been reported and
+        the wake-up wound down.
+        """
+        state = self.hass.states.get(self.player)
+        if state is not None and state.state == STATE_OFF:
+            # Wake the player first, the way the Logitech Media Server did,
+            # instead of leaving that to the arrival of the stream.
+            await self._async_turn_on_player()
+        if not await self._async_play_media():
+            return False
+        if not await self._async_wait_for_playback():
+            await self._async_report_failure(
+                f"{self.player} did not start playing within "
+                f"{PLAY_TIMEOUT_SECONDS} seconds"
+            )
+            return False
+        return True
+
+    async def _async_still_playing(self, started: datetime) -> bool:
+        """Return False when the music was stopped on purpose.
+
+        A stop right after the start is taken for a stream that fell over and
+        the music is started again. A pause always counts as a dismissal.
+        """
+        if self._is_playing():
+            return True
+        state = self.hass.states.get(self.player)
+        if state is not None and state.state == STATE_PAUSED:
+            return False
+        if self._restarts >= PLAY_RETRIES or dt_util.utcnow() - started > timedelta(
+            seconds=START_GRACE_SECONDS
+        ):
+            return False
+        self._restarts += 1
+        _LOGGER.warning(
+            "%s: %s stopped right after the start (%s), starting again (%d/%d)",
+            self.name,
+            self.player,
+            state.state if state else "gone",
+            self._restarts,
+            PLAY_RETRIES,
+        )
+        if not await self._async_start_playback():
+            raise _WakeUpEnded
+        return True
+
+    async def _async_sleep_watching(self, seconds: float, started: datetime) -> bool:
+        """Sleep, keeping an eye on the playback while the start is fresh."""
+        loop = asyncio.get_running_loop()
+        end = loop.time() + seconds
+        while (left := end - loop.time()) > 0:
+            if dt_util.utcnow() - started > timedelta(seconds=START_GRACE_SECONDS):
+                await asyncio.sleep(left)
+                return True
+            await asyncio.sleep(min(2.0, left))
+            if not await self._async_still_playing(started):
+                return False
+        return True
 
     def _is_playing(self) -> bool:
         """Return True while the player is actually playing."""
@@ -504,6 +582,24 @@ class AlarmCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
         except HomeAssistantError as err:
             _LOGGER.warning("%s: could not set the volume: %s", self.name, err)
+
+    async def _async_turn_on_player(self) -> None:
+        """Switch the player on and give it a moment to wake up."""
+        try:
+            await self.hass.services.async_call(
+                MEDIA_PLAYER_DOMAIN,
+                SERVICE_TURN_ON,
+                {ATTR_ENTITY_ID: self.player},
+                blocking=True,
+            )
+        except HomeAssistantError as err:
+            _LOGGER.warning("%s: could not switch the player on: %s", self.name, err)
+            return
+        for _ in range(10):
+            state = self.hass.states.get(self.player)
+            if state is None or state.state != STATE_OFF:
+                return
+            await asyncio.sleep(0.5)
 
     async def _async_turn_off_player(self) -> None:
         """Switch the player off."""
