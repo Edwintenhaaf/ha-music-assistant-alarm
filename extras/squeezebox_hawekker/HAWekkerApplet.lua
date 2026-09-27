@@ -17,8 +17,8 @@ pad als vroeger de LMS: jnt:notify('playerAlarmState', ...).
 Al het zichtbare werk doet SqueezeOS daarna zelf: AlarmSnoozeApplet zet het
 belletje in de balk aan, start zijn RTCAlarmTimer en opent op de wektijd het
 wekvenster met de klok die elke seconde meeloopt, terwijl Music Assistant de
-radio speelt. Blijft het geluid uit, dan valt het toestel na een minuut terug
-op zijn eigen wektoon.
+radio speelt. Blijft het geluid uit, dan valt het toestel na ~65 s (of ~20 s met
+de aangepaste drempel uit de README) terug op zijn eigen wektoon.
 
 Het belletje in de klok-screensaver hangt niet aan de iconbar maar aan
 player:getAlarmState(), dus die zetten we er zelf bij.

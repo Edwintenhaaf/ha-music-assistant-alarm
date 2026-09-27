@@ -67,3 +67,22 @@ ssh root@<squeezebox> "killall jive"
 Because the clock screensaver only subscribes to alarm messages if the player
 already existed when it opened, the applet rebuilds that screensaver once after
 a restart. Without that, the bell stays away.
+
+## Optional: a shorter silence before the built-in alarm tone
+
+When the wake-up window opens and no audio arrives, SqueezeOS falls back to its
+own alarm tone — but only after 13 failed checks of 5 seconds, over a minute of
+silence. Anyone who pokes the radio in that minute dismisses the window, and the
+tone never sounds. On the device the threshold can be lowered in
+`/usr/share/jive/applets/AlarmSnooze/AlarmSnoozeApplet.lua`:
+
+```sh
+cd /usr/share/jive/applets/AlarmSnooze
+[ -e AlarmSnoozeApplet.lua.orig ] || cp AlarmSnoozeApplet.lua AlarmSnoozeApplet.lua.orig
+sed -i 's/failedAudioTicker > 12 then/failedAudioTicker > 3 then/' AlarmSnoozeApplet.lua
+killall jive
+```
+
+With `> 3` the tone starts after about 20 seconds of silence. The root filesystem
+is a unionfs over flash, so the change survives a reboot; a firmware update puts
+the original back. BusyBox has no `cp -n`, hence the test.
