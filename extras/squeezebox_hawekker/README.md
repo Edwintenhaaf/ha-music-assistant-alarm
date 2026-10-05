@@ -30,6 +30,24 @@ every five minutes after that, so the device catches up on its own after a
 reboot. Fill in the address of the Squeezebox in the options of the alarm to
 switch it on.
 
+## Who may send
+
+The packet sets the alarm and the clock, so the applet only listens to one
+address: that of Home Assistant. You do not have to fill it in. The first valid
+packet that arrives decides, and its sender is stored in the applet settings on
+the device (`/etc/squeezeplay/userpath/settings/HAWekker.lua`, key `ha_ip`).
+Packets from any other address are ignored from then on.
+
+Did Home Assistant move to another address, or do you want to pin it up front?
+Put it in that file and restart the user interface:
+
+```sh
+echo 'settings = { ha_ip = "192.0.2.10" }' > /etc/squeezeplay/userpath/settings/HAWekker.lua
+killall jive
+```
+
+Removing the file makes the applet learn the address again.
+
 ## It also sets the clock
 
 The same packet carries `now=<epoch>`, the current time. A Squeezebox has no

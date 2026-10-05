@@ -60,8 +60,9 @@ oo.class(_M, Applet)
 -- poort waarop Home Assistant de wektijd aflevert
 local LISTEN_PORT = 9997
 
--- alleen pakketjes van Home Assistant zelf zijn interessant
-local HA_IP = "192.168.2.100"
+-- alleen pakketjes van Home Assistant zelf zijn interessant; het adres staat in
+-- de instellingen (ha_ip). Is het leeg, dan onthouden we het adres van het
+-- eerste geldige pakketje en houden we het daarna bij dat ene adres.
 
 -- hoe vaak we controleren of de speler nog weet dat er een wekker staat
 local TICK = 60000
@@ -119,7 +120,8 @@ function _sink(self, chunk, err)
 		return
 	end
 
-	if chunk.ip ~= HA_IP then
+	local settings = self:getSettings()
+	if settings.ha_ip and chunk.ip ~= settings.ha_ip then
 		log:warn("pakketje van onbekend adres genegeerd: ", tostring(chunk.ip))
 		return
 	end
@@ -128,6 +130,12 @@ function _sink(self, chunk, err)
 	if not epoch then
 		log:warn("onleesbaar pakketje: ", tostring(chunk.data))
 		return
+	end
+
+	if not settings.ha_ip then
+		settings.ha_ip = chunk.ip
+		self:storeSettings()
+		log:info("Home Assistant gevonden op ", tostring(chunk.ip), ", vastgelegd in de instellingen")
 	end
 
 	self.wanted = epoch

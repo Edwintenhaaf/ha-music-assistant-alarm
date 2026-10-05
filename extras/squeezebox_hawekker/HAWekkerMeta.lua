@@ -27,6 +27,8 @@ end
 
 function defaultSettings(self)
 	return {
+		-- adres van Home Assistant; nil = het eerste geldige pakketje bepaalt het
+		ha_ip = nil,
 	}
 end
 
