@@ -9,6 +9,11 @@ Music Assistant itself has no alarm clock, and its provider system only loads
 providers that ship inside the server package — so this lives in Home Assistant,
 where the lights are anyway.
 
+<img width="2296" height="2353" alt="image" src="https://github.com/user-attachments/assets/16511b20-f675-45ed-be3c-ab87549d9919" />
+
+<img width="1206" height="1575" alt="image" src="https://github.com/user-attachments/assets/68d8c07c-8e1b-4519-a762-5bdaaf30b77f" />
+
+
 ## What you get
 
 Add one alarm per person or per room. Each one is a config entry with its own
